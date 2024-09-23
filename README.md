@@ -1,3 +1,8 @@
+We have a Heap of Size 128KB. Minimum Block Size to be given out is 1 KB. Design a Malloc and Free API to give and take memory back into the heap
+
+
+
+
 1. Memory Alignment*: Ensure that allocated memory is aligned to the required boundary, typically 8 or 16 bytes, depending on the architecture.
 
 2. *Heap Initialization*: Check if malloc in initialize_heap returns NULL. If it does, you should handle the error accordingly.
