@@ -1,0 +1,94 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#define HEAP_SIZE 128 * 1024 // 128KB
+#define MIN_BLOCK_SIZE 1024  // 1KB
+
+typedef struct Block {
+    size_t size;
+    bool is_free;
+    struct Block* next;
+} Block;
+
+Block* heap = NULL;
+Block* last_allocated = NULL;
+Block* last_freed = NULL;
+
+void initialize_heap() {
+    heap = (Block*)malloc(HEAP_SIZE);
+    heap->size = HEAP_SIZE - sizeof(Block);
+    heap->is_free = true;
+    heap->next = NULL;
+}
+
+void* my_malloc(size_t size) {
+    if (size == 0 || size > HEAP_SIZE - sizeof(Block)) {
+        return NULL;
+    }
+
+    size = (size + MIN_BLOCK_SIZE - 1) / MIN_BLOCK_SIZE * MIN_BLOCK_SIZE;
+
+    Block* best_fit = NULL;
+    Block* current = heap;
+
+    while (current) {
+        if (current->is_free && current->size >= size) {
+            if (!best_fit || current->size < best_fit->size) {
+                best_fit = current;
+            }
+        }
+        current = current->next;
+    }
+
+    if (!best_fit) {
+        return NULL;
+    }
+
+    if (best_fit->size > size + sizeof(Block) + MIN_BLOCK_SIZE) {
+        Block* new_block = (Block*)((uint8_t*)best_fit + sizeof(Block) + size);
+        new_block->size = best_fit->size - size - sizeof(Block);
+        new_block->is_free = true;
+        new_block->next = best_fit->next;
+        best_fit->next = new_block;
+        best_fit->size = size;
+    }
+
+    best_fit->is_free = false;
+    last_allocated = best_fit;
+    return (void*)((uint8_t*)best_fit + sizeof(Block));
+}
+
+void my_free(void* ptr) {
+    if (!ptr) {
+        return;
+    }
+
+    Block* block = (Block*)((uint8_t*)ptr - sizeof(Block));
+    block->is_free = true;
+    last_freed = block;
+
+    Block* current = heap;
+    while (current) {
+        if (current->is_free && current->next && current->next->is_free) {
+            current->size += current->next->size + sizeof(Block);
+            current->next = current->next->next;
+        }
+        current = current->next;
+    }
+}
+
+int main() {
+    initialize_heap();
+
+    void* ptr1 = my_malloc(sizeof(int) * 128);
+    void* ptr2 = my_malloc(sizeof(uint8_t) * 1000);
+    void* ptr3 = my_malloc(128 * 8 * 1024);
+
+    my_free(ptr1);
+    my_free(ptr2);
+    my_free(ptr3);
+
+    return 0;
+}
